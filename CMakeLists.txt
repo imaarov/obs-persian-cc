@@ -30,3 +30,13 @@ target_link_libraries(${PROJECT_NAME}
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "obs-plugins/64bit")
 install(DIRECTORY data/ DESTINATION "data/obs-plugins/${PROJECT_NAME}")
+
+add_custom_target(package_source
+  COMMAND ${CMAKE_COMMAND} -E tar czf ${CMAKE_BINARY_DIR}/persian-subtitle-plugin-source.tar.gz --directory=${CMAKE_SOURCE_DIR} .
+  COMMENT "Creating source tarball for ${PROJECT_NAME}"
+)
+
+add_custom_target(package
+  DEPENDS package_source
+  COMMENT "Packaging the Persian Subtitle Plugin"
+)
