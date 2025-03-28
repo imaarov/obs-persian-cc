@@ -13,7 +13,6 @@ public:
     void update(obs_data_t* settings);
     void render(gs_effect_t* effect);
     static void audioCaptureCallback(void* data, obs_source_t* source, const struct audio_data* audio, bool muted);
-    pcmf32_buffer_
 private:
     obs_source_t* source_;
     whisper_context* whisper_ctx_;
