@@ -17,10 +17,11 @@ add_library(${PROJECT_NAME} MODULE
     src/plugin-main.cpp
     src/subtitle-source.cpp
 )
+add_subdirectory(external/whisper.cpp build_whisper)
 
 target_link_libraries(${PROJECT_NAME}
     ${LIBOBS_LIBRARIES}
-    "external/whisper.cpp/build/src/libwhisper.so"  # shared library whisper
+    whisper
 )
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "obs-plugins/64bit")
