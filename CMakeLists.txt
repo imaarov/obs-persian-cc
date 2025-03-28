@@ -19,6 +19,10 @@ add_library(${PROJECT_NAME} MODULE
 )
 add_subdirectory(external/whisper.cpp build_whisper)
 
+set_target_properties(whisper PROPERTIES
+    COMPILE_OPTIONS "-Wno-error" # prevent the whisper throw warnings
+)
+
 target_link_libraries(${PROJECT_NAME}
     ${LIBOBS_LIBRARIES}
     whisper
