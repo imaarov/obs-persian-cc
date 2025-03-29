@@ -282,7 +282,7 @@ jobs:
       - name: Configure CMake for Windows
         shell: pwsh
         run: |
-          cmake -S . -B build -DCMAKE_PREFIX_PATH="D:\obs-studio" -DCMAKE_BUILD_TYPE=${{ needs.check-event.outputs.config }}
+          cmake -S . -B build -DCMAKE_PREFIX_PATH="D:\obs-studio" -DLIBOBS_ROOT="D:\obs-studio" -DCMAKE_BUILD_TYPE=${{ needs.check-event.outputs.config }}
 
       - name: Build Plugin 🧱
         shell: pwsh
