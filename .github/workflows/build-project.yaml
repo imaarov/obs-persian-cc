@@ -90,7 +90,7 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_16.1.0.app/Contents/Developer
           print '::endgroup::'
           print '::group::Install OBS Dependencies'
-          brew install obs-studio # Provides libobs
+          brew install --cask obs # Provides libobs
           print '::endgroup::'
           print '::group::Clean Homebrew Environment'
           local -a unwanted_formulas=()
