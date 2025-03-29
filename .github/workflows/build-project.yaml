@@ -69,7 +69,6 @@ jobs:
             echo "pluginName=${plugin_display_name}" >> $GITHUB_OUTPUT
           else
             echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
-          fi
 
   macos-build:
     name: Build for macOS 🍏
@@ -278,13 +277,20 @@ jobs:
       - name: Install CMake
         uses: lukka/get-cmake@main
 
-      - name: Download OBS Studio Dependencies
+      - name: Download OBS Studio Windows Installer
         run: |
-          # Download OBS dependencies (adjust version as needed)
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-windows-deps-2023-10-01-x64.zip" -OutFile "obs-deps.zip"
-          7z x obs-deps.zip -o"D:\obs-deps"
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-libobs-30.0.0-windows-x64.zip" -OutFile "obs-libobs.zip"
-          7z x obs-libobs.zip -o"D:\obs-libobs"
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows-Installer.exe" -OutFile "OBS-Studio-31.0.3-Windows-Installer.exe"
+          Start-Process "OBS-Studio-31.0.3-Windows-Installer.exe" -ArgumentList '/silent' -NoNewWindow -Wait
+
+      - name: Download OBS Studio Windows ZIP
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows.zip" -OutFile "OBS-Studio-31.0.3-Windows.zip"
+          Expand-Archive -Path "OBS-Studio-31.0.3-Windows.zip" -DestinationPath "./obs-studio"
+
+      - name: Download OBS Studio Windows PDBs
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows-PDBs.zip" -OutFile "OBS-Studio-31.0.3-Windows-PDBs.zip"
+          Expand-Archive -Path "OBS-Studio-31.0.3-Windows-PDBs.zip" -DestinationPath "./obs-studio-pdbs"
 
       - name: Build Plugin 🧱
         uses: ./.github/actions/build-plugin
