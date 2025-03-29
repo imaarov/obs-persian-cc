@@ -271,14 +271,14 @@ jobs:
       - name: Install CMake and 7zip
         uses: lukka/get-cmake@main
 
-      - name: Download OBS Studio Dependencies
+      - name: Download OBS Studio for Windows
+        shell: pwsh
         run: |
-          # Download OBS development dependencies (not the installer or runtime ZIP)
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-windows-deps-2023-10-01-x64.zip" -OutFile "obs-deps.zip"
-          7z x obs-deps.zip -o"D:\obs-deps"
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-libobs-30.0.0-windows-x64.zip" -OutFile "obs-libobs.zip"
-          7z x obs-libobs.zip -o"D:\obs-libobs"
-
+          # Download the Windows zip package which contains the necessary libraries and headers
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows.zip" -OutFile "OBS-Studio-Windows.zip"
+          
+          # Ensure 7-Zip is available on the runner; extract the contents to a specified directory
+          7z x OBS-Studio-Windows.zip -o"D:\obs-studio"
       - name: Build Plugin 🧱
         uses: ./.github/actions/build-plugin
         with:
