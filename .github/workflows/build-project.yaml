@@ -5,6 +5,7 @@ on:
       pluginName:
         description: Project name detected by parsing build spec file
         value: ${{ jobs.check-event.outputs.pluginName }}
+
 jobs:
   check-event:
     name: Check GitHub Event Data 🔎
@@ -30,7 +31,6 @@ jobs:
         run: |
           : Check Event Data ☑️
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-
           case "${GITHUB_EVENT_NAME}" in
             pull_request)
               config_data=('codesign:false' 'notarize:false' 'package:false' 'config:RelWithDebInfo')
@@ -55,21 +55,19 @@ jobs:
               ;;
             *) ;;
           esac
-
           for config in "${config_data[@]}"; do
             IFS=':' read -r key value <<< "${config}"
             echo "${key}=${value}" >> $GITHUB_OUTPUT
           done
           echo "commitHash=${GITHUB_SHA:0:9}" >> $GITHUB_OUTPUT
-
           plugin_name="$(grep 'name' buildspec.json | sed -E -e 's/^.+"name":[^"]+"(.+)",?$/\1/g')"
           plugin_display_name="$(grep 'displayName' buildspec.json | sed -E -e 's/^.+"displayName":[^"]+"(.+)",?$/\1/g' || echo "")"
-
           if [[ "${plugin_display_name}" ]]; then
             echo "pluginName=${plugin_display_name}" >> $GITHUB_OUTPUT
           else
             echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
           fi
+
   macos-build:
     name: Build for macOS 🍏
     runs-on: macos-15
@@ -88,26 +86,22 @@ jobs:
         run: |
           : Set Up Environment 🔧
           if (( ${+RUNNER_DEBUG} )) setopt XTRACE
-
           print '::group::Enable Xcode 16.1'
           sudo xcode-select --switch /Applications/Xcode_16.1.0.app/Contents/Developer
           print '::endgroup::'
-
+          print '::group::Install OBS Dependencies'
+          brew install obs-studio # Provides libobs
+          print '::endgroup::'
           print '::group::Clean Homebrew Environment'
           local -a unwanted_formulas=()
           local -a remove_formulas=()
           for formula (${unwanted_formulas}) {
             if [[ -d ${HOMEBREW_PREFIX}/Cellar/${formula} ]] remove_formulas+=(${formula})
           }
-
           if (( #remove_formulas )) brew uninstall --ignore-dependencies ${remove_formulas}
           print '::endgroup::'
-
-          local product_name
-          local product_version
-          read -r product_name product_version <<< \
-            "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
-
+          local product_name product_version
+          read -r product_name product_version <<< "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
           print "pluginName=${product_name}" >> $GITHUB_OUTPUT
           print "pluginVersion=${product_version}" >> $GITHUB_OUTPUT
 
@@ -140,6 +134,7 @@ jobs:
           config: ${{ needs.check-event.outputs.config }}
           codesign: ${{ fromJSON(needs.check-event.outputs.codesign) }}
           codesignIdent: ${{ steps.codesign.outputs.codesignIdent }}
+          cmakeArgs: -DCMAKE_PREFIX_PATH="$(brew --prefix obs-studio)" # Pass libobs path
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
@@ -149,7 +144,7 @@ jobs:
           package: ${{ fromJSON(needs.check-event.outputs.package) }}
           codesign: ${{ fromJSON(needs.check-event.outputs.codesign) && fromJSON(steps.codesign.outputs.haveCodesignIdent) }}
           codesignIdent: ${{ steps.codesign.outputs.codesignIdent }}
-          installerIdent: ${{ steps.codesign.outputs.installerIdent }}
+          installerCPAIdent: ${{ steps.codesign.outputs.installerIdent }}
           codesignTeam: ${{ steps.codesign.outputs.codesignTeam }}
           notarize: ${{ fromJSON(needs.check-event.outputs.notarize) && fromJSON(steps.codesign.outputs.haveNotarizationUser) }}
           codesignUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
@@ -195,10 +190,9 @@ jobs:
         run: |
           : Set Up Environment 🔧
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-
-          read -r product_name product_version <<< \
-            "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
-
+          sudo apt-get update
+          sudo apt-get install -y libobs-dev # Ensure libobs is available
+          read -r product_name product_version <<< "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
           echo "pluginName=${product_name}" >> $GITHUB_OUTPUT
           echo "pluginVersion=${product_version}" >> $GITHUB_OUTPUT
 
@@ -235,7 +229,7 @@ jobs:
           name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-${{ matrix.os }}-x86_64-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-x86_64*.*
 
-      - name: Upload debug symbol artifacts 🪲
+      - name: Upload Debug Symbol Artifacts 🪲
         uses: actions/upload-artifact@v4
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
@@ -274,31 +268,23 @@ jobs:
           "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
           "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
 
-      - name: Install CMake
+      - name: Install CMake and 7zip
         uses: lukka/get-cmake@main
 
-      - name: Download OBS Studio Windows Installer
+      - name: Download OBS Studio Dependencies
         run: |
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows-Installer.exe" -OutFile "OBS-Studio-31.0.3-Windows-Installer.exe"
-          Start-Process "OBS-Studio-31.0.3-Windows-Installer.exe" -ArgumentList '/silent' -NoNewWindow -Wait
-
-      - name: Download OBS Studio Windows ZIP
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows.zip" -OutFile "OBS-Studio-31.0.3-Windows.zip"
-          Expand-Archive -Path "OBS-Studio-31.0.3-Windows.zip" -DestinationPath "./obs-studio"
-
-      - name: Download OBS Studio Windows PDBs
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.0.3/OBS-Studio-31.0.3-Windows-PDBs.zip" -OutFile "OBS-Studio-31.0.3-Windows-PDBs.zip"
-          Expand-Archive -Path "OBS-Studio-31.0.3-Windows-PDBs.zip" -DestinationPath "./obs-studio-pdbs"
+          # Download OBS development dependencies (not the installer or runtime ZIP)
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-windows-deps-2023-10-01-x64.zip" -OutFile "obs-deps.zip"
+          7z x obs-deps.zip -o"D:\obs-deps"
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/30.0.0/obs-libobs-30.0.0-windows-x64.zip" -OutFile "obs-libobs.zip"
+          7z x obs-libobs.zip -o"D:\obs-libobs"
 
       - name: Build Plugin 🧱
         uses: ./.github/actions/build-plugin
         with:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
-          # Pass the dependency paths to the build action
-          cmakeArgs: -DCMAKE_PREFIX_PATH="D:/obs-deps;D:/obs-libobs"
+          cmakeArgs: -DCMAKE_PREFIX_PATH="D:\obs-deps;D:\obs-libobs"
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin

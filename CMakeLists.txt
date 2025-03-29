@@ -1,36 +1,43 @@
-cmake_minimum_required(VERSION 3.16)
-project(persian-subtitle-plugin)
+cmake_minimum_required(VERSION 3.16...3.30)
+project(persian-subtitle-plugin VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(libobs REQUIRED)
-include_directories(/usr/include/obs)
-include_directories(${LIBOBS_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE OBS::libobs)
 
-# include whisper
-include_directories("external/whisper.cpp/include") # include to include/ for whisper.h
-include_directories("external/whisper.cpp/ggml/include") # include ggml.h
+target_include_directories(${PROJECT_NAME} PRIVATE ${LIBOBS_INCLUDE_DIRS})
 
-add_library(${PROJECT_NAME} MODULE src/plugin-main.cpp src/subtitle-source.cpp)
-add_subdirectory(external/whisper.cpp build_whisper)
-
-set_target_properties(
-  whisper
-  PROPERTIES
-    COMPILE_OPTIONS
-      "-Wno-error" # prevent the whisper throw warnings
+target_include_directories(${PROJECT_NAME} PRIVATE
+  "external/whisper.cpp/include"      # whisper
+  "external/whisper.cpp/ggml/include" # ggml.h
 )
 
-target_link_libraries(${PROJECT_NAME} ${LIBOBS_LIBRARIES} whisper)
+add_library(${PROJECT_NAME} MODULE
+  src/plugin-main.cpp
+  src/subtitle-source.cpp
+)
+
+add_subdirectory(external/whisper.cpp build_whisper)
+
+set_target_properties(whisper PROPERTIES COMPILE_OPTIONS "-Wno-error")
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBOBS_LIBRARIES} whisper)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "obs-plugins/64bit")
 install(DIRECTORY data/ DESTINATION "data/obs-plugins/${PROJECT_NAME}")
 
 add_custom_target(
   package_source
-  COMMAND ${CMAKE_COMMAND} -E tar czf ${CMAKE_BINARY_DIR}/persian-subtitle-plugin-source.tar.gz -- ${CMAKE_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E tar czf ${CMAKE_BINARY_DIR}/${PROJECT_NAME}-source.tar.gz -- ${CMAKE_SOURCE_DIR}
   COMMENT "Creating source tarball for ${PROJECT_NAME}"
 )
 
 add_custom_target(package DEPENDS package_source COMMENT "Packaging the Persian Subtitle Plugin")
+
+if(WIN32)
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    OUTPUT_NAME "${PROJECT_NAME}"
+  )
+endif()
