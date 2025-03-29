@@ -69,7 +69,7 @@ jobs:
             echo "pluginName=${plugin_display_name}" >> $GITHUB_OUTPUT
           else
             echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
-
+          fi
   macos-build:
     name: Build for macOS 🍏
     runs-on: macos-15
